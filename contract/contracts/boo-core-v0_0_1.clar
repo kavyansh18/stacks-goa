@@ -27,7 +27,9 @@
         (asserts! (> prize-amount u0) ERR_VAL_ZERO)
 
         ;; transfer prize into treasury (stub)
-        (try! (contract-call? .boo-treasury-v0_0_1 fund-request curr-id prize-amount))
+        (try! (contract-call? .boo-treasury-v0_0_1 fund-request curr-id prize-amount
+            tx-sender
+        ))
 
         (map-set id-to-req curr-id {
             requester: tx-sender,
@@ -129,4 +131,8 @@
 
 (define-read-only (get-total-req)
     (ok (var-get no-of-requests))
+)
+
+(define-read-only (get-stx-balance)
+    (stx-get-balance tx-sender)
 )

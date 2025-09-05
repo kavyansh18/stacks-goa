@@ -9,9 +9,10 @@
 (define-public (fund-request
         (request-id uint)
         (amount uint)
+        (requester principal)
     )
     (begin
-        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        (try! (stx-transfer? amount requester (as-contract tx-sender)))
         (map-set req-to-balance request-id amount)
 
         (print {
@@ -35,7 +36,7 @@
         (match (map-get? req-to-balance request-id)
             bal (if (>= bal amount)
                 (begin
-                    (try! (stx-transfer? amount (as-contract tx-sender) solver))
+                    (try! (as-contract (stx-transfer? amount tx-sender solver)))
                     (map-set req-to-balance request-id (- bal amount))
 
                     (print {
