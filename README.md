@@ -1,7 +1,7 @@
 # BOO - Bitcoin Optimistic Oracle
-An implementation of Optimistic Oracle on Stacks, allowing you to get any off chain data with AI validation.
+An implementation of an Optimistic Oracle on Stacks, enabling the secure retrieval of arbitrary off-chain data through a propose-and-dispute mechanism enhanced with AI-driven validation for accuracy and reliability
 
-# Workflow
+## Workflow
 This section provides a detailed explanation of the oracle's architecture and functionality within our Web3 ecosystem, ensuring secure and reliable data integration from off-chain sources to on-chain smart contracts
 
 ```mermaid
