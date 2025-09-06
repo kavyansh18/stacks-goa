@@ -31,6 +31,21 @@
     )
 )
 
+(define-public (add-collateral (amount uint))
+    (begin
+        (asserts! (>= amount MIN_COLL) ERR_LOWER_COLL)
+        (asserts! (unwrap! (is-registered tx-sender) ERR_NOT_REGISTERED)
+            ERR_NOT_REGISTERED
+        )
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        (map-set addr-to-coll tx-sender
+            (+ (unwrap! (map-get? addr-to-coll tx-sender) ERR_NOT_REGISTERED)
+                amount
+            ))
+        (ok true)
+    )
+)
+
 (define-public (unregister-solver)
     (match (map-get? addr-to-coll tx-sender)
         coll (begin
