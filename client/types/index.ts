@@ -54,3 +54,15 @@ export interface WalletConnection {
   provider: 'hiro' | 'xverse';
   isConnected: boolean;
 }
+
+// Extend Window interface for Leather wallet
+declare global {
+  interface Window {
+    leather?: {
+      request: (method: string, params?: any) => Promise<any>;
+    };
+    LeatherProvider?: {
+      request: (method: string, params?: any) => Promise<any>;
+    };
+  }
+}
