@@ -1,0 +1,32 @@
+---
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: boo-solver-v0_0_1
+            expected-sender: ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49
+            cost: 21260
+            path: contracts/boo-solver-v0_0_1.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: boo-treasury-v0_0_1
+            expected-sender: ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49
+            cost: 15080
+            path: contracts/boo-treasury-v0_0_1.clar
+            anchor-block-only: true
+            clarity-version: 3
+        - contract-publish:
+            contract-name: boo-core-v0_0_1
+            expected-sender: ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49
+            cost: 37470
+            path: contracts/boo-core-v0_0_1.clar
+            anchor-block-only: true
+            clarity-version: 3
+      epoch: "3.2"
