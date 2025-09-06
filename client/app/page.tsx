@@ -1,103 +1,106 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import WalletConnect from '@/components/WalletConnect';
+import RequestBoard from '@/components/RequestBoard';
+import TokenPriceModule from '@/components/TokenPriceModule';
+import SportsScoreModule from '@/components/SportsScoreModule';
+import ThemeToggle from '@/components/ThemeToggle';
+import { Database, TrendingUp, Trophy, List, CheckSquare } from 'lucide-react';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [activeTab, setActiveTab] = useState('all');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const tabs = [
+    { id: 'all', label: 'ALL REQUESTS', icon: Database },
+    { id: 'token-prices', label: 'TOKEN PRICES', icon: TrendingUp },
+    { id: 'sports-scores', label: 'SPORTS SCORES', icon: Trophy },
+    { id: 'unresolved', label: 'UNRESOLVED', icon: List },
+    { id: 'resolved', label: 'RESOLVED', icon: CheckSquare },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background p-4">
+      {/* Header */}
+      <div className="terminal-box mb-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold terminal-glow mb-2">
+              ╔═══════════════════════════════════════╗
+            </h1>
+            <h1 className="text-4xl font-bold terminal-glow mb-2">
+              ║     OPTIMISTIC ORACLE v2.1          ║
+            </h1>
+            <h1 className="text-4xl font-bold terminal-glow mb-4">
+              ╚═══════════════════════════════════════╝
+            </h1>
+            <div className="text-sm text-gray-400">
+              // Decentralized Oracle Network on Stacks Blockchain
+              <br />
+              // Request data • Propose answers • Validate with AI
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
+            <WalletConnect />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Dashboard Tabs */}
+      <div className="terminal-box mb-6">
+        <div className="flex border-b border-green-500">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-6 py-4 border-r border-green-500 transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-green-500 text-black font-bold'
+                    : 'hover:bg-green-500 hover:bg-opacity-20'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-sm">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {activeTab === 'token-prices' && <TokenPriceModule />}
+          {activeTab === 'sports-scores' && <SportsScoreModule />}
+          {(activeTab === 'all' || activeTab === 'unresolved' || activeTab === 'resolved') && (
+            <RequestBoard activeTab={activeTab} />
+          )}
+        </div>
+      </div>
+
+      {/* System Status */}
+      <div className="terminal-box p-4">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center space-x-4">
+            <span>SYSTEM STATUS:</span>
+            <span className="text-green-500 blinking">● ONLINE</span>
+          </div>
+          
+          <div className="flex items-center space-x-4 text-gray-400">
+            <span>NETWORK: STACKS MAINNET</span>
+            <span>BLOCK: 147,892</span>
+            <span>UPTIME: 99.9%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-6 text-center text-xs text-gray-500">
+        <p>// POWERED BY STACKS BLOCKCHAIN • CLARITY SMART CONTRACTS</p>
+        <p>// AI VALIDATION: GEMINI & OPENAI • DATA SOURCES: COINGECKO, BINANCE, SPORTSRADAR</p>
+      </div>
     </div>
   );
 }
