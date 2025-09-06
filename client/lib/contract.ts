@@ -28,53 +28,104 @@ export type Req = {
 };
 
 export async function getAllReqs() {
-  const latestIdCV = (await fetchCallReadOnlyFunction({
-    contractAddress: CONTRACT_ADDRESS,
-    contractName: CONTRACT_NAME,
-    functionName: "get-total-req",
-    functionArgs: [],
-    senderAddress: CONTRACT_ADDRESS,
-    network: STACKS_TESTNET,
-  })) as UIntCV;
+  try {
+    const latestIdCV = await fetchCallReadOnlyFunction({
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: "get-total-req",
+      functionArgs: [],
+      senderAddress: CONTRACT_ADDRESS,
+      network: STACKS_TESTNET,
+    });
 
-  const latestId = parseInt(latestIdCV.value.toString());
+    console.log("Raw response from get-total-req:", latestIdCV);
 
-  const reqs: Req[] = [];
+    let latestId: number;
+    if (latestIdCV.type === "ok" && latestIdCV.value.type === "uint") {
+      latestId = parseInt(latestIdCV.value.value.toString());
+    } else if (latestIdCV.type === "none") {
+      console.log("get-total-req returned (none), assuming 0 requests");
+      latestId = 0;
+    } else {
+      console.error("get-total-req returned unexpected type:", latestIdCV.type);
+      latestId = 0;
+    }
 
-  for (let i = 0; i < latestId; i++) {
-    const req = await getReq(i);
-    if (req) reqs.push(req);
+    if (isNaN(latestId)) {
+      console.error("Parsed latestId is NaN, raw value:", latestIdCV);
+      latestId = 0;
+    }
+
+    console.log(`Total requests from get-total-req: ${latestId}`);
+
+    const reqs: Req[] = [];
+
+    for (let i = 0; i < latestId; i++) {
+      const req = await getReq(i);
+      if (req) {
+        console.log(`Request ID ${i}:`, req);
+        reqs.push(req);
+      } else {
+        console.log(`Request ID ${i} returned null`);
+      }
+    }
+
+    console.log("Final requests array:", reqs);
+    return reqs;
+  } catch (error) {
+    console.error("Error in getAllReqs:", error);
+    return [];
   }
-
-  return reqs;
 }
 
 export async function getReq(id: number) {
-  const reqDetails = await fetchCallReadOnlyFunction({
-    contractAddress: CONTRACT_ADDRESS,
-    contractName: CONTRACT_NAME,
-    functionName: "get-data",
-    functionArgs: [uintCV(id)],
-    senderAddress: CONTRACT_ADDRESS,
-    network: STACKS_TESTNET,
-  });
+  try {
+    const reqDetails = await fetchCallReadOnlyFunction({
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: "get-data",
+      functionArgs: [uintCV(id)],
+      senderAddress: CONTRACT_ADDRESS,
+      network: STACKS_TESTNET,
+    });
 
-  const responseCV = reqDetails as OptionalCV<TupleCV<ReqCV>>;
+    const responseCV = reqDetails as any; // Temporarily use 'any' due to 'ok' wrapper
+    console.log(`ResponseCV for ID ${id}:`, responseCV);
 
-  if (responseCV.type === "none") return null;
+    // Unwrap the 'ok' response
+    if (responseCV.type !== "ok") {
+      console.log(`Request ID ${id} has unexpected type: ${responseCV.type}`);
+      return null;
+    }
 
-  if (responseCV.value.type === "tuple") return null;
+    const innerCV = responseCV.value as OptionalCV<TupleCV<ReqCV>>;
+    if (innerCV.type === "none") {
+      console.log(`Request ID ${id} is none (no data)`);
+      return null;
+    }
 
-  const resCV = responseCV.value.value;
+    if (innerCV.type !== "some" || innerCV.value.type !== "tuple") {
+      console.log(`Request ID ${id} has unexpected inner type: ${innerCV.value?.type}`);
+      return null;
+    }
 
-  const req: Req = {
-    id: id,
-    requester: resCV["requester"].value,
-    request: resCV["request"].value,
-    response:
-      resCV["response"].type === "some" ? resCV["response"].value.value : null,
-    prize: parseInt(resCV["prize"].value.toString()),
-  };
+    const resCV = innerCV.value;
 
-  return req;
+    const req: Req = {
+      id: id,
+      //@ts-ignore
+      requester: resCV.requester.value,
+      //@ts-ignore
+      request: resCV.request.value,
+      //@ts-ignore
+      response: resCV.response.type === "some" ? resCV.response.value.value : null,
+      //@ts-ignore
+      prize: parseInt(resCV.prize.value.toString()),
+    };
+
+    return req;
+  } catch (error) {
+    console.error(`Error fetching request ID ${id}:`, error);
+    return null;
+  }
 }
