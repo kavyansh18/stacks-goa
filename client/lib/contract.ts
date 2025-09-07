@@ -105,7 +105,9 @@ export async function getReq(id: number) {
     }
 
     if (innerCV.type !== "some" || innerCV.value.type !== "tuple") {
-      console.log(`Request ID ${id} has unexpected inner type: ${innerCV.value?.type}`);
+      console.log(
+        `Request ID ${id} has unexpected inner type: ${innerCV.value?.type}`
+      );
       return null;
     }
 
@@ -118,7 +120,8 @@ export async function getReq(id: number) {
       //@ts-ignore
       request: resCV.request.value,
       //@ts-ignore
-      response: resCV.response.type === "some" ? resCV.response.value.value : null,
+      response:
+        resCV.response.type === "some" ? resCV.response.value.value : null,
       //@ts-ignore
       prize: parseInt(resCV.prize.value.toString()),
     };
