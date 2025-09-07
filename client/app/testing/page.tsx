@@ -4,14 +4,16 @@ import { getTotalReqs, getReq, Req } from "@/lib/contract";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import WalletConnect from "@/hook/connectWallet";
 
+// Define the animation variants for the rows
 const rowVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.1, 
+      delay: i * 0.1, // Staggered delay based on index
     },
   }),
 };
@@ -41,7 +43,7 @@ const App: React.FC = () => {
 
         const results = await Promise.all(fetchPromises);
         const fetchedReqs = results.filter((req): req is Req => req !== null);
-        
+
         setReqs(fetchedReqs);
         console.log("All requests fetched and set on the frontend:", fetchedReqs);
 
@@ -99,9 +101,7 @@ const App: React.FC = () => {
           <button className="flex items-center border border-orange-600 rounded-full px-4 py-2">
             <span className="mr-2">💡</span> DARK
           </button>
-          <button className="flex items-center border border-orange-600 rounded-full px-4 py-2">
-            <span className="mr-2">🔗</span> CONNECT WALLET
-          </button>
+          <WalletConnect />
         </div>
       </header>
 
@@ -146,7 +146,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Table Header */}
-<div className="grid grid-cols-[50px_1fr_2fr_1fr_120px] gap-4 border-b-2 border-orange-600 pb-2 text-sm font-bold uppercase text-black">
+        <div className="grid grid-cols-[50px_1fr_2fr_1fr_120px] gap-4 border-b-2 border-orange-600 pb-2 text-sm font-bold uppercase text-black">
           <div>ID</div>
           <div>REQUESTER</div>
           <div className="ml-8">QUESTION</div>
@@ -172,7 +172,7 @@ const App: React.FC = () => {
               <div className="text-black overflow-hidden truncate">{req.id.toString()}</div>
               <div className="text-black overflow-hidden">{req.requester}</div>
               <div className="text-black overflow-hidden truncate ml-8">{req.request}</div>
-              <div className="text-black overflow-hidden truncate">{(req.prize)/1000000} STX</div>
+              <div className="text-black overflow-hidden truncate">{(req.prize) / 1000000} STX</div>
               <div className="text-orange-600 justify-self-end">
                 <button
                   onClick={() => setSelectedReq(req)}
@@ -202,7 +202,7 @@ const App: React.FC = () => {
             <div className="mb-4">
               <p className="font-bold text-black">Description:</p>
               <p className="text-black break-words">{selectedReq.request}</p>
-              <p className="text-orange-600">{(selectedReq.prize)/1000000} STX</p>
+              <p className="text-orange-600">{(selectedReq.prize) / 1000000} STX</p>
             </div>
             <form onSubmit={handleSubmitAnswer}>
               <div className="mb-4">
