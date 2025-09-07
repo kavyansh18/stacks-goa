@@ -5,7 +5,7 @@ import { Cl, cvToJSON, fetchCallReadOnlyFunction } from "@stacks/transactions";
 const CONTRACT_ADDRESS = "ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49";
 const CONTRACT_NAME = "boo-solver-v0_0_1";
 
-export async function registerSolver(amount: number) {
+export async function registerSolver(amount: number) { //register user
   const functionArgs = [Cl.uint(amount)];
   try {
     const response = await request("stx_callContract", {
@@ -22,7 +22,7 @@ export async function registerSolver(amount: number) {
   }
 }
 
-export async function addCollateral(amount: number) {
+export async function addCollateral(amount: number) { //add collateral
   const functionArgs = [Cl.uint(amount)];
   try {
     const response = await request("stx_callContract", {
@@ -39,7 +39,7 @@ export async function addCollateral(amount: number) {
   }
 }
 
-export async function unregisterSolver() {
+export async function unregisterSolver() { //return collateral to user wallet
   try {
     const response = await request("stx_callContract", {
       contract: `${CONTRACT_ADDRESS}.${CONTRACT_NAME}`,
@@ -72,7 +72,7 @@ export async function slashSolver(solver: string, amount: number) {
   }
 }
 
-export async function getCollateral(solver: string) {
+export async function getCollateral(solver: string) { //show to user on ui
   try {
     const reqDetails = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
@@ -91,7 +91,7 @@ export async function getCollateral(solver: string) {
   }
 }
 
-export async function isRegistered(solver: string) {
+export async function isRegistered(solver: string) { //check before calling reward function
   try {
     const reqDetails = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
@@ -104,6 +104,7 @@ export async function isRegistered(solver: string) {
 
     const balance = cvToJSON(reqDetails);
     console.log(balance);
+    return balance.success
   } catch (error) {
     console.error(`Error fetching request `, error);
     return null;

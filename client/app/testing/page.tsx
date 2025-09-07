@@ -1,22 +1,28 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { getTotalReqs, getReq, Req as ReqBase } from "@/lib/contract";
+import {
+  registerSolver,
+  unregisterSolver,
+  isRegistered,
+  addCollateral,
+} from "@/hook/booSolver";
 import { motion } from "framer-motion";
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import WalletConnect from "@/hook/connectWallet";
 import { useVerify } from "@/hook/useVerify";
+import { isConnected } from "@stacks/connect";
 
 type Req = ReqBase & { verified?: boolean };
 
-// Define the animation variants for the rows
 const rowVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.1, // Staggered delay based on index
+      delay: i * 0.1, 
     },
   }),
 };
@@ -28,7 +34,23 @@ const App: React.FC = () => {
   const [selectedReq, setSelectedReq] = useState<Req | null>(null);
   const [answerInput, setAnswerInput] = useState<string>("");
   const [apiResponse, setApiResponse] = useState<any | null>(null);
+  const [registerAmount, setRegisterAmount] = useState<number>(1000000);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [isAddingCollateral, setIsAddingCollateral] = useState<boolean>(false);
+  const [isUnregistering, setIsUnregistering] = useState<boolean>(false);
+  const [showRegisterModal, setShowRegisterModal] = useState<boolean>(false);
+  const [showAddCollateralModal, setShowAddCollateralModal] =
+    useState<boolean>(false);
+  const [isSolverRegistered, setIsSolverRegistered] = useState<boolean | null>(
+    null
+  );
+  const [addCollateralAmount, setAddCollateralAmount] = useState<number>(
+    1000000
+  );
+  const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
   const { verifyAnswer, loading: verifyLoading } = useVerify();
+
+  const solverAddress = "ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49"; // Hardcoded solver address
 
   useEffect(() => {
     const fetchReqs = async () => {
@@ -48,11 +70,15 @@ const App: React.FC = () => {
         }
 
         const results = await Promise.all(fetchPromises);
-        const fetchedReqs = results.filter((req): req is Req => req !== null);
+        const fetchedReqs = results.filter(
+          (req): req is Req => req !== null
+        );
 
         setReqs(fetchedReqs);
-        console.log("All requests fetched and set on the frontend:", fetchedReqs);
-
+        console.log(
+          "All requests fetched and set on the frontend:",
+          fetchedReqs
+        );
       } catch (err) {
         setError("Failed to fetch requests: " + (err as Error).message);
         console.error("Error fetching requests:", err);
@@ -64,6 +90,120 @@ const App: React.FC = () => {
     fetchReqs();
   }, []);
 
+  useEffect(() => {
+    const checkStatus = async () => {
+      const connected = isConnected();
+      setIsWalletConnected(connected);
+
+      if (solverAddress) {
+        try {
+          const registered = await isRegistered(solverAddress);
+          setIsSolverRegistered(registered);
+          console.log("Solver Registration Status:", registered);
+        } catch (error) {
+          console.error("Error checking registration status:", error);
+          setIsSolverRegistered(null);
+        }
+      } else {
+        setIsSolverRegistered(null);
+      }
+    };
+    
+    checkStatus();
+
+  }, [solverAddress]);
+
+  const handleRegister = async () => {
+    setIsRegistering(true);
+    try {
+      await registerSolver(registerAmount);
+      toast.success("Solver registered successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      setIsSolverRegistered(true);
+      setShowRegisterModal(false);
+    } catch (error) {
+      toast.error("Failed to register solver. See console for details.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      console.error("Registration Error:", error);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleUnregister = async () => {
+    setIsUnregistering(true);
+    try {
+      await unregisterSolver();
+      toast.success("Solver unregistered successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      setIsSolverRegistered(false);
+    } catch (error) {
+      toast.error("Failed to unregister solver. See console for details.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      console.error("Unregistration Error:", error);
+    } finally {
+      setIsUnregistering(false);
+    }
+  };
+
+  const handleAddCollateral = async () => {
+    setIsAddingCollateral(true);
+    try {
+      await addCollateral(addCollateralAmount);
+      toast.success("Collateral added successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      setShowAddCollateralModal(false);
+    } catch (error) {
+      toast.error("Failed to add collateral. See console for details.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+      console.error("Add Collateral Error:", error);
+    } finally {
+      setIsAddingCollateral(false);
+    }
+  };
+
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedReq) {
@@ -73,22 +213,24 @@ const App: React.FC = () => {
       const data = await verifyAnswer(question, answer);
       setApiResponse(data);
       if (data) {
-        // Update the status of the specific request in the local state
-        setReqs(prevReqs => 
-          prevReqs.map(req => 
+        setReqs((prevReqs) =>
+          prevReqs.map((req) =>
             req.id === selectedReq.id ? { ...req, verified: data.verified } : req
           )
         );
-        
-        toast.success(`Verification result: ${data.verified ? "Verified" : "Not Verified"}`, {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-        });
+
+        toast.success(
+          `Verification result: ${data.verified ? "Verified" : "Not Verified"}`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+          }
+        );
       } else {
         toast.error("Failed to verify answer.", {
           position: "top-right",
@@ -128,9 +270,38 @@ const App: React.FC = () => {
           <span className="text-orange-600">OPTIMISTIC ORACLE v2.1</span>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="flex items-center border border-orange-600 rounded-full px-4 py-2">
-            <span className="mr-2">💡</span> DARK
-          </button>
+          <div className="flex flex-col items-end">
+            {isSolverRegistered === false ? (
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="flex items-center border border-orange-600 rounded-full px-4 py-2"
+                disabled={!isWalletConnected}
+              >
+                <span className="mr-2">💡</span> Register
+              </button>
+            ) : isSolverRegistered === true ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowAddCollateralModal(true)}
+                    className="flex items-center border border-orange-600 rounded-full px-4 py-2"
+                    disabled={!isWalletConnected}
+                  >
+                    <span className="mr-2">💰</span> Add Collateral
+                  </button>
+                  <button
+                    onClick={handleUnregister}
+                    className="flex items-center border border-red-600 text-red-600 rounded-full px-4 py-2"
+                    disabled={isUnregistering || !isWalletConnected}
+                  >
+                    <span className="mr-2">❌</span> Unregister
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Checking registration...</p>
+            )}
+          </div>
           <WalletConnect />
         </div>
       </header>
@@ -146,11 +317,21 @@ const App: React.FC = () => {
         {/* Filter and Navigation */}
         <div className="flex items-center justify-between space-x-2 mb-4">
           <div className="flex space-x-2">
-            <button className="bg-orange-600 text-white rounded-md px-4 py-1">ALL REQUESTS</button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">TOKEN PRICES</button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">SPORTS SCORES</button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">UNRESOLVED</button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">RESOLVED</button>
+            <button className="bg-orange-600 text-white rounded-md px-4 py-1">
+              ALL REQUESTS
+            </button>
+            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+              TOKEN PRICES
+            </button>
+            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+              SPORTS SCORES
+            </button>
+            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+              UNRESOLVED
+            </button>
+            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+              RESOLVED
+            </button>
           </div>
         </div>
 
@@ -200,12 +381,22 @@ const App: React.FC = () => {
               animate="visible"
               custom={index}
             >
-              <div className="text-black overflow-hidden truncate">{req.id.toString()}</div>
+              <div className="text-black overflow-hidden truncate">
+                {req.id.toString()}
+              </div>
               <div className="text-black overflow-hidden">{req.requester}</div>
-              <div className="text-black overflow-hidden truncate ml-8">{req.request}</div>
-              <div className="text-black overflow-hidden truncate">{(req.prize) / 1000000} STX</div>
+              <div className="text-black overflow-hidden truncate ml-8">
+                {req.request}
+              </div>
+              <div className="text-black overflow-hidden truncate">
+                {req.prize / 1000000} STX
+              </div>
               <div className="text-black overflow-hidden ">
-                {req.verified === undefined ? "Pending" : (req.verified ? "✅ Verified" : "❌ Failed")}
+                {req.verified === undefined
+                  ? "Pending"
+                  : req.verified
+                  ? "✅ Verified"
+                  : "❌ Failed"}
               </div>
               <div className="text-orange-600 justify-self-end">
                 <button
@@ -225,7 +416,9 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
             <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
-              <h3 className="text-lg font-bold">Submit Answer for Request ID: {selectedReq.id.toString()}</h3>
+              <h3 className="text-lg font-bold">
+                Submit Answer for Request ID: {selectedReq.id.toString()}
+              </h3>
               <button
                 onClick={() => {
                   setSelectedReq(null);
@@ -240,11 +433,16 @@ const App: React.FC = () => {
             <div className="mb-4">
               <p className="font-bold text-black">Description:</p>
               <p className="text-black break-words">{selectedReq.request}</p>
-              <p className="text-orange-600">{(selectedReq.prize) / 1000000} STX</p>
+              <p className="text-orange-600">
+                {selectedReq.prize / 1000000} STX
+              </p>
             </div>
             <form onSubmit={handleSubmitAnswer}>
               <div className="mb-4">
-                <label htmlFor="answer" className="block text-black font-bold mb-2">
+                <label
+                  htmlFor="answer"
+                  className="block text-black font-bold mb-2"
+                >
                   Your Answer:
                 </label>
                 <input
@@ -257,12 +455,16 @@ const App: React.FC = () => {
                 />
               </div>
               {verifyLoading ? (
-                <div className="text-center text-orange-600 mb-4">Loading verification...</div>
+                <div className="text-center text-orange-600 mb-4">
+                  Loading verification...
+                </div>
               ) : (
                 apiResponse && (
                   <div className="mb-4">
                     <p className="text-black font-bold">Verification Status:</p>
-                    <p className="text-orange-600">{apiResponse.verified ? "✅ Verified" : "❌ Not Verified"}</p>
+                    <p className="text-orange-600">
+                      {apiResponse.verified ? "✅ Verified" : "❌ Not Verified"}
+                    </p>
                   </div>
                 )
               )}
@@ -276,6 +478,91 @@ const App: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Register Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
+              <h3 className="text-lg font-bold">Register as a Solver</h3>
+              <button
+                onClick={() => setShowRegisterModal(false)}
+                className="text-orange-600 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-black mb-2">
+                Enter the amount of STX you want to stake as collateral to
+                become a solver.
+              </p>
+              <input
+                type="number"
+                value={registerAmount}
+                onChange={(e) => setRegisterAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-orange-600 rounded-md bg-white text-black"
+                placeholder="Collateral amount in uSTX"
+                min="0"
+              />
+              <p className="text-sm mt-2 text-gray-500">
+                1 STX = 1,000,000 uSTX
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={handleRegister}
+                disabled={isRegistering}
+                className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRegistering ? "Staking..." : "Stake Collateral"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Collateral Modal */}
+      {showAddCollateralModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
+              <h3 className="text-lg font-bold">Add Collateral</h3>
+              <button
+                onClick={() => setShowAddCollateralModal(false)}
+                className="text-orange-600 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="mb-4">
+              <p className="text-black mb-2">
+                Enter the additional amount of STX you want to stake.
+              </p>
+              <input
+                type="number"
+                value={addCollateralAmount}
+                onChange={(e) => setAddCollateralAmount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-orange-600 rounded-md bg-white text-black"
+                placeholder="Collateral amount in uSTX"
+                min="0"
+              />
+              <p className="text-sm mt-2 text-gray-500">
+                1 STX = 1,000,000 uSTX
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={handleAddCollateral}
+                disabled={isAddingCollateral}
+                className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAddingCollateral ? "Adding..." : "Add Collateral"}
+              </button>
+            </div>
           </div>
         </div>
       )}
