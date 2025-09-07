@@ -37,6 +37,12 @@ func fetchQA(apiURL string) (QA, error) {
 	return qa, err
 }
 
+func enableCORS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // allow all origins
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+}
+
 
 func verifyQAWithGemini(question, answer string) (bool, string) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
@@ -97,7 +103,45 @@ func verifyQAWithGemini(question, answer string) (bool, string) {
 }
 
 
+// func verifyHandler(w http.ResponseWriter, r *http.Request) {
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+// 		return
+// 	}
+
+// 	var qa QA
+// 	err := json.NewDecoder(r.Body).Decode(&qa)
+
+	
+// 	if err != nil || qa.Question == "" || qa.Answer == "" {
+// 		fmt.Println("No valid input JSON, fetching from external API instead")
+// 		qa, err = fetchQA("https://your-api.com/qa")
+// 		if err != nil {
+// 			http.Error(w, "Failed to fetch external QA", http.StatusInternalServerError)
+// 			return
+// 		}
+// 	}
+
+// 	verified, reply := verifyQAWithGemini(qa.Question, qa.Answer)
+
+// 	resp := VerifyResponse{
+// 		Verified: verified,
+// 		Reply:    reply,
+// 	}
+
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(resp)
+// }
+
 func verifyHandler(w http.ResponseWriter, r *http.Request) {
+	enableCORS(w, r) // ✅ enable CORS for this handler
+
+	// Handle CORS preflight request
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
 		return
@@ -105,8 +149,6 @@ func verifyHandler(w http.ResponseWriter, r *http.Request) {
 
 	var qa QA
 	err := json.NewDecoder(r.Body).Decode(&qa)
-
-	
 	if err != nil || qa.Question == "" || qa.Answer == "" {
 		fmt.Println("No valid input JSON, fetching from external API instead")
 		qa, err = fetchQA("https://your-api.com/qa")
