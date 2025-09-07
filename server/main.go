@@ -45,7 +45,7 @@ func verifyQAWithGemini(question, answer string) bool {
 		"contents": []map[string]interface{}{
 			{
 				"parts": []map[string]string{
-					{"text": fmt.Sprintf("Question: %s\nAnswer: %s\nVerify if the answer is correct. Respond only with true or false", question, answer)},
+					{"text": fmt.Sprintf("Question: %s\nAnswer: %s\nVerify if the answer is correct. Respond only with true or false, and give correct option also", question, answer)},
 				},
 			},
 		},
@@ -112,8 +112,8 @@ func main() {
 	
 // abhi check karne ke liye.....
 qa := QA{
-    Question: "who won ipl in 2023",
-    Answer:   "csk",
+    Question: "who won ipl in 2025",
+    Answer:   "rcb",
 }
 
 fmt.Println("Q:", qa.Question)
