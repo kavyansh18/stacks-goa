@@ -1,11 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getTotalReqs, getReq, Req } from "@/lib/contract";
+import { getTotalReqs, getReq, Req as ReqBase } from "@/lib/contract";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import WalletConnect from "@/hook/connectWallet";
 import { useVerify } from "@/hook/useVerify";
+
+type Req = ReqBase & { verified?: boolean };
 
 // Define the animation variants for the rows
 const rowVariants = {
@@ -71,7 +73,14 @@ const App: React.FC = () => {
       const data = await verifyAnswer(question, answer);
       setApiResponse(data);
       if (data) {
-        toast.success(`Verification result: ${data.verified}`, {
+        // Update the status of the specific request in the local state
+        setReqs(prevReqs => 
+          prevReqs.map(req => 
+            req.id === selectedReq.id ? { ...req, verified: data.verified } : req
+          )
+        );
+        
+        toast.success(`Verification result: ${data.verified ? "Verified" : "Not Verified"}`, {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: true,
@@ -91,13 +100,12 @@ const App: React.FC = () => {
           progress: undefined,
         });
       }
-      setSelectedReq(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-100">
+      <div className="flex items-center justify-center min-h-screen bg-orange-900 text-gray-100">
         <p className="text-xl">Loading data...</p>
       </div>
     );
@@ -105,7 +113,7 @@ const App: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-red-400">
+      <div className="flex items-center justify-center min-h-screen bg-orange-900 text-red-400">
         <p className="text-xl">Error: {error}</p>
       </div>
     );
@@ -168,12 +176,13 @@ const App: React.FC = () => {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[50px_1fr_2fr_1fr_120px] gap-4 border-b-2 border-orange-600 pb-2 text-sm font-bold uppercase text-black">
+        <div className="grid grid-cols-[50px_1fr_2fr_1fr_120px_120px] gap-4 border-b-2 border-orange-600 pb-2 text-sm font-bold uppercase text-black">
           <div>ID</div>
           <div>REQUESTER</div>
           <div className="ml-8">QUESTION</div>
           <div>PRIZE</div>
-          <div className="text-right">SUBMIT ANSWER</div>
+          <div>STATUS</div>
+          <div className="text-right">ACTIONS</div>
         </div>
 
         {/* Table Rows (dynamically rendered) */}
@@ -185,7 +194,7 @@ const App: React.FC = () => {
           reqs.map((req, index) => (
             <motion.div
               key={req.id.toString()}
-              className="grid grid-cols-[50px_1fr_2fr_1fr_120px] gap-4 py-2 border-b border-orange-300 items-center text-sm"
+              className="grid grid-cols-[50px_1fr_2fr_1fr_120px_120px] gap-4 py-2 border-b border-orange-300 items-center text-sm"
               variants={rowVariants}
               initial="hidden"
               animate="visible"
@@ -195,6 +204,9 @@ const App: React.FC = () => {
               <div className="text-black overflow-hidden">{req.requester}</div>
               <div className="text-black overflow-hidden truncate ml-8">{req.request}</div>
               <div className="text-black overflow-hidden truncate">{(req.prize) / 1000000} STX</div>
+              <div className="text-black overflow-hidden ">
+                {req.verified === undefined ? "Pending" : (req.verified ? "✅ Verified" : "❌ Failed")}
+              </div>
               <div className="text-orange-600 justify-self-end">
                 <button
                   onClick={() => setSelectedReq(req)}
