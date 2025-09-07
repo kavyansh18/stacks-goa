@@ -7,6 +7,9 @@ import {
   uintCV,
   UIntCV,
   TupleCV,
+  ClarityValue,
+  ResponseOkCV,
+  someCV,
 } from "@stacks/transactions";
 
 const CONTRACT_ADDRESS = "ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49";
@@ -27,9 +30,9 @@ export type Req = {
   prize: number;
 };
 
-export async function getAllReqs() {
+export async function getAllReqs(): Promise<Req[]> {
   try {
-    const latestIdCV = await fetchCallReadOnlyFunction({
+    const latestIdCV: ClarityValue = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
       contractName: CONTRACT_NAME,
       functionName: "get-total-req",
@@ -40,17 +43,14 @@ export async function getAllReqs() {
 
     console.log("Raw response from get-total-req:", latestIdCV);
 
-    let latestId: number;
-    if (latestIdCV.type === "ok" && latestIdCV.value.type === "uint") {
-      latestId = parseInt(latestIdCV.value.value.toString());
-    } else if (latestIdCV.type === "none") {
-      console.log("get-total-req returned (none), assuming 0 requests");
-      latestId = 0;
+    let latestId = 0;
+    const typedLatestIdCV = latestIdCV as ResponseOkCV<UIntCV>;
+    if (typedLatestIdCV.type === "ok" && typedLatestIdCV.value.type === "uint") {
+      latestId = Number(typedLatestIdCV.value.value);
     } else {
-      console.error("get-total-req returned unexpected type:", latestIdCV.type);
-      latestId = 0;
+      console.error("get-total-req returned unexpected type:", latestIdCV);
     }
-
+    
     if (isNaN(latestId)) {
       console.error("Parsed latestId is NaN, raw value:", latestIdCV);
       latestId = 0;
@@ -59,7 +59,6 @@ export async function getAllReqs() {
     console.log(`Total requests from get-total-req: ${latestId}`);
 
     const reqs: Req[] = [];
-
     for (let i = 0; i < latestId; i++) {
       const req = await getReq(i);
       if (req) {
@@ -78,7 +77,7 @@ export async function getAllReqs() {
   }
 }
 
-export async function getReq(id: number) {
+export async function getReq(id: number): Promise<Req | null> {
   try {
     const reqDetails = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
@@ -89,38 +88,22 @@ export async function getReq(id: number) {
       network: STACKS_TESTNET,
     });
 
-    const responseCV = reqDetails as any; // Temporarily use 'any' due to 'ok' wrapper
+    const responseCV = reqDetails as any;
     console.log(`ResponseCV for ID ${id}:`, responseCV);
 
-    // Unwrap the 'ok' response
-    if (responseCV.type !== "ok") {
-      console.log(`Request ID ${id} has unexpected type: ${responseCV.type}`);
+    if (responseCV.type !== "ok" || responseCV.value.type !== "some" || responseCV.value.value.type !== "tuple") {
+      console.log(`Request ID ${id} is not a valid tuple`);
       return null;
     }
 
-    const innerCV = responseCV.value as OptionalCV<TupleCV<ReqCV>>;
-    if (innerCV.type === "none") {
-      console.log(`Request ID ${id} is none (no data)`);
-      return null;
-    }
-
-    if (innerCV.type !== "some" || innerCV.value.type !== "tuple") {
-      console.log(`Request ID ${id} has unexpected inner type: ${innerCV.value?.type}`);
-      return null;
-    }
-
-    const resCV = innerCV.value;
+    const resCV = responseCV.value.value;
 
     const req: Req = {
       id: id,
-      //@ts-ignore
       requester: resCV.requester.value,
-      //@ts-ignore
       request: resCV.request.value,
-      //@ts-ignore
       response: resCV.response.type === "some" ? resCV.response.value.value : null,
-      //@ts-ignore
-      prize: parseInt(resCV.prize.value.toString()),
+      prize: Number(resCV.prize.value),
     };
 
     return req;
