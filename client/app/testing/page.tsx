@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import WalletConnect from "@/hook/connectWallet";
+import { useVerify } from "@/hook/useVerify";
 
 // Define the animation variants for the rows
 const rowVariants = {
@@ -23,6 +24,9 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReq, setSelectedReq] = useState<Req | null>(null);
+  const [answerInput, setAnswerInput] = useState<string>("");
+  const [apiResponse, setApiResponse] = useState<any | null>(null);
+  const { verifyAnswer, loading: verifyLoading } = useVerify();
 
   useEffect(() => {
     const fetchReqs = async () => {
@@ -58,19 +62,37 @@ const App: React.FC = () => {
     fetchReqs();
   }, []);
 
-  const handleSubmitAnswer = (e: React.FormEvent) => {
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to handle form submission
-    toast.success("submitted thokchom", {
-      position: "top-right",
-      autoClose: 3000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-    });
-    setSelectedReq(null);
+    if (selectedReq) {
+      const question = selectedReq.request;
+      const answer = answerInput;
+      setApiResponse(null);
+      const data = await verifyAnswer(question, answer);
+      setApiResponse(data);
+      if (data) {
+        toast.success(`Verification result: ${data.verified}`, {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      } else {
+        toast.error("Failed to verify answer.", {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+        });
+      }
+      setSelectedReq(null);
+    }
   };
 
   if (loading) {
@@ -193,7 +215,11 @@ const App: React.FC = () => {
             <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
               <h3 className="text-lg font-bold">Submit Answer for Request ID: {selectedReq.id.toString()}</h3>
               <button
-                onClick={() => setSelectedReq(null)}
+                onClick={() => {
+                  setSelectedReq(null);
+                  setAnswerInput("");
+                  setApiResponse(null);
+                }}
                 className="text-orange-600 text-xl font-bold"
               >
                 &times;
@@ -212,14 +238,27 @@ const App: React.FC = () => {
                 <input
                   type="text"
                   id="answer"
+                  value={answerInput}
+                  onChange={(e) => setAnswerInput(e.target.value)}
                   className="w-full px-3 py-2 border border-orange-600 rounded-md bg-white text-black"
                   required
                 />
               </div>
+              {verifyLoading ? (
+                <div className="text-center text-orange-600 mb-4">Loading verification...</div>
+              ) : (
+                apiResponse && (
+                  <div className="mb-4">
+                    <p className="text-black font-bold">Verification Status:</p>
+                    <p className="text-orange-600">{apiResponse.verified ? "✅ Verified" : "❌ Not Verified"}</p>
+                  </div>
+                )
+              )}
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200"
+                  disabled={verifyLoading}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   SUBMIT ANSWER
                 </button>
