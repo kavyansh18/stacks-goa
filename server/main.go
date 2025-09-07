@@ -17,6 +17,11 @@ type QA struct {
 	Answer   string `json:"answer"`
 }
 
+type VerifyResponse struct {
+	Verified bool   `json:"verified"`
+	Reply    string `json:"reply"`
+}
+
 
 func fetchQA(apiURL string) (QA, error) {
 	resp, err := http.Get(apiURL)
@@ -33,19 +38,18 @@ func fetchQA(apiURL string) (QA, error) {
 }
 
 
-func verifyQAWithGemini(question, answer string) bool {
+func verifyQAWithGemini(question, answer string) (bool, string) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		fmt.Println("GEMINI_API_KEY not set")
-		return false
+		fmt.Println("❌ GEMINI_API_KEY not set")
+		return false, ""
 	}
 
-	
 	payload := map[string]interface{}{
 		"contents": []map[string]interface{}{
 			{
 				"parts": []map[string]string{
-					{"text": fmt.Sprintf("Question: %s\nAnswer: %s\nVerify if the answer is correct. Respond only with true or false, and give correct option also", question, answer)},
+					{"text": fmt.Sprintf("Question: %s\nAnswer: %s\nVerify if the answer is correct. Respond only with true or false, and give the correct option if false.", question, answer)},
 				},
 			},
 		},
@@ -54,28 +58,25 @@ func verifyQAWithGemini(question, answer string) bool {
 	jsonData, _ := json.Marshal(payload)
 	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey
 
-	//url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + apiKey
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println("Request error:", err)
-		return false
+		return false, ""
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("🔹 Raw Response:", string(body)) // Debug print
+	fmt.Println("🔹 Raw Response:", string(body)) //
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
 		fmt.Println("JSON parse error:", err)
-		return false
+		return false, ""
 	}
 
-	
 	candidates, ok := result["candidates"].([]interface{})
 	if !ok || len(candidates) == 0 {
-		fmt.Println("No candidates in response")
-		return false
+		return false, ""
 	}
 
 	first, _ := candidates[0].(map[string]interface{})
@@ -83,7 +84,7 @@ func verifyQAWithGemini(question, answer string) bool {
 	parts, _ := content["parts"].([]interface{})
 
 	if len(parts) == 0 {
-		return false
+		return false, ""
 	}
 
 	textPart, _ := parts[0].(map[string]interface{})
@@ -91,36 +92,49 @@ func verifyQAWithGemini(question, answer string) bool {
 
 	fmt.Println("🔹 Gemini Reply:", text)
 
-	return text == "true" || text == "True"
+	verified := text == "true" || text == "True"
+	return verified, text
+}
+
+
+func verifyHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var qa QA
+	err := json.NewDecoder(r.Body).Decode(&qa)
+
+	
+	if err != nil || qa.Question == "" || qa.Answer == "" {
+		fmt.Println("No valid input JSON, fetching from external API instead")
+		qa, err = fetchQA("https://your-api.com/qa")
+		if err != nil {
+			http.Error(w, "Failed to fetch external QA", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	verified, reply := verifyQAWithGemini(qa.Question, qa.Answer)
+
+	resp := VerifyResponse{
+		Verified: verified,
+		Reply:    reply,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func main() {
-	
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("No .env file found, falling back to system env")
 	}
 
-	
-	// qa, _ := fetchQA("https://your-api.com/qa")
+	http.HandleFunc("/verify", verifyHandler)
 
-	// fmt.Println("Q:", qa.Question)
-	// fmt.Println("A:", qa.Answer)
-
-	// verified := verifyQAWithGemini(qa.Question, qa.Answer)
-
-	
-// abhi check karne ke liye.....
-qa := QA{
-    Question: "who won ipl in 2025",
-    Answer:   "rcb",
-}
-
-fmt.Println("Q:", qa.Question)
-fmt.Println("A:", qa.Answer)
-
-verified := verifyQAWithGemini(qa.Question, qa.Answer)
-//.......
-
-	fmt.Println("Verified:", verified)
+	fmt.Println("Server running on http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
 }
