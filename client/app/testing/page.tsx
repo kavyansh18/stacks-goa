@@ -1,43 +1,38 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { getAllReqs, getReq, Req } from "@/lib/contract";
+import { getTotalReqs, getReq, Req } from "@/lib/contract";
 
 const App: React.FC = () => {
   const [reqs, setReqs] = useState<Req[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchReqs = async () => {
       try {
-        setDebugInfo((prev) => [...prev, "Fetching all requests..."]);
-        const allReqs = await getAllReqs();
-        setDebugInfo((prev) => [
-          ...prev,
-          `Received ${allReqs.length} requests from getAllReqs`,
-        ]);
+        const totalReqs = await getTotalReqs();
+        console.log(`Total requests to fetch: ${totalReqs}`);
 
-        // If no requests, try fetching ID 0 directly for debugging
-        if (allReqs.length === 0) {
-          setDebugInfo((prev) => [
-            ...prev,
-            "No requests found, attempting to fetch request ID 0 directly...",
-          ]);
-          const singleReq = await getReq(0);
-          if (singleReq) {
-            setDebugInfo((prev) => [...prev, "Found request ID 0 directly"]);
-            setReqs([singleReq]);
-          } else {
-            setDebugInfo((prev) => [...prev, "Request ID 0 returned null"]);
-          }
-        } else {
-          setReqs(allReqs);
+        if (totalReqs === 0) {
+          setReqs([]);
+          console.log("No requests found in the contract.");
+          return;
         }
+
+        const fetchPromises = [];
+        for (let i = 0; i < totalReqs; i++) {
+          fetchPromises.push(getReq(i));
+        }
+
+        const results = await Promise.all(fetchPromises);
+        const fetchedReqs = results.filter((req): req is Req => req !== null);
+        
+        setReqs(fetchedReqs);
+        console.log("All requests fetched and set on the frontend:", fetchedReqs);
+
       } catch (err) {
-        const errorMessage = "Failed to fetch requests: " + (err as Error).message;
-        setError(errorMessage);
-        setDebugInfo((prev) => [...prev, errorMessage]);
+        setError("Failed to fetch requests: " + (err as Error).message);
+        console.error("Error fetching requests:", err);
       } finally {
         setLoading(false);
       }
@@ -47,67 +42,80 @@ const App: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: "20px" }}>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-gray-100">
+        <p className="text-xl">Loading data...</p>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div style={{ padding: "20px" }}>
-        <h1>Error</h1>
-        <p>{error}</p>
-        <h2>Debug Info</h2>
-        <ul>
-          {debugInfo.map((info, index) => (
-            <li key={index}>{info}</li>
-          ))}
-        </ul>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-red-400">
+        <p className="text-xl">Error: {error}</p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Requests from Contract</h1>
-      {reqs.length === 0 ? (
-        <p>No requests found in the contract. Check console logs and debug info for details.</p>
-      ) : (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid #ddd" }}>
-              <th style={{ padding: "8px", textAlign: "left" }}>ID</th>
-              <th style={{ padding: "8px", textAlign: "left" }}>Requester</th>
-              <th style={{ padding: "8px", textAlign: "left" }}>Request</th>
-              <th style={{ padding: "8px", textAlign: "left" }}>Response</th>
-              <th style={{ padding: "8px", textAlign: "left" }}>Prize</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reqs.map((req) => (
-              <tr key={req.id} style={{ borderBottom: "1px solid #ddd" }}>
-                <td style={{ padding: "8px" }}>{req.id}</td>
-                <td style={{ padding: "8px" }}>{req.requester}</td>
-                <td style={{ padding: "8px" }}>{req.request}</td>
-                <td style={{ padding: "8px" }}>{req.response || "None"}</td>
-                <td style={{ padding: "8px" }}>{req.prize}</td>
-              </tr>
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8 text-center text-purple-400">
+          Stacks Contract Data Viewer 🔮
+        </h1>
+        {reqs.length === 0 ? (
+          <p className="text-center text-lg text-gray-400">
+            No requests found in the contract.
+          </p>
+        ) : (
+          <div className="space-y-8">
+            {reqs.map((req, index) => (
+              <div
+                key={req.id}
+                className="bg-gray-800 rounded-xl p-6 shadow-2xl hover:shadow-purple-500/30 transition-shadow duration-300"
+              >
+                <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+                  <h2 className="text-2xl font-semibold text-cyan-400">
+                    Request ID:{" "}
+                    <span className="text-white">{req.id.toString()}</span>
+                  </h2>
+                  <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    Active
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="p-4 bg-gray-700 rounded-lg shadow-inner">
+                    <p className="text-sm text-gray-400 font-medium">
+                      Requester
+                    </p>
+                    <p className="font-mono text-sm break-all mt-1 text-yellow-300">
+                      {req.requester}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-700 rounded-lg shadow-inner">
+                    <p className="text-sm text-gray-400 font-medium">Request</p>
+                    <p className="font-mono text-md break-words mt-1 text-green-300">
+                      "{req.request}"
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-700 rounded-lg shadow-inner">
+                    <p className="text-sm text-gray-400 font-medium">Prize</p>
+                    <p className="font-mono text-md mt-1 text-red-300">
+                      {req.prize.toString()}n
+                    </p>
+                  </div>
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 p-4 bg-gray-700 rounded-lg shadow-inner">
+                    <p className="text-sm text-gray-400 font-medium">Response</p>
+                    <p className="font-mono text-md break-words mt-1 text-blue-300">
+                      {req.response || "None"}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      )}
-      <h2>Debug Info</h2>
-      <ul>
-        {debugInfo.map((info, index) => (
-          <li key={index}>{info}</li>
-        ))}
-      </ul>
-      <p>
-        <strong>Note:</strong> This is a read-only interaction with the Stacks testnet contract at address{" "}
-        <code>ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49.boo-core-v0_0_1</code>. No wallet
-        connection is required, as the functions <code>getAllReqs</code> and <code>getReq</code> use
-        read-only calls via <code>fetchCallReadOnlyFunction</code> from the @stacks/transactions
-        library. If write operations (e.g., submitting a new request) were needed, a wallet connection
-        using @stacks/connect would be required for signing transactions.
-      </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

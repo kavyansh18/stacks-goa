@@ -7,6 +7,9 @@ import {
   uintCV,
   UIntCV,
   TupleCV,
+  ClarityValue,
+  ResponseOkCV,
+  someCV,
 } from "@stacks/transactions";
 
 const CONTRACT_ADDRESS = "ST3J2X81CCA3JFX6HKM10FCJFXT9PW4E7DMQG1D49";
@@ -27,9 +30,9 @@ export type Req = {
   prize: number;
 };
 
-export async function getAllReqs() {
+export async function getTotalReqs(): Promise<number> {
   try {
-    const latestIdCV = await fetchCallReadOnlyFunction({
+    const latestIdCV: ClarityValue = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
       contractName: CONTRACT_NAME,
       functionName: "get-total-req",
@@ -40,15 +43,12 @@ export async function getAllReqs() {
 
     console.log("Raw response from get-total-req:", latestIdCV);
 
-    let latestId: number;
-    if (latestIdCV.type === "ok" && latestIdCV.value.type === "uint") {
-      latestId = parseInt(latestIdCV.value.value.toString());
-    } else if (latestIdCV.type === "none") {
-      console.log("get-total-req returned (none), assuming 0 requests");
-      latestId = 0;
+    let latestId = 0;
+    const typedLatestIdCV = latestIdCV as ResponseOkCV<UIntCV>;
+    if (typedLatestIdCV.type === "ok" && typedLatestIdCV.value.type === "uint") {
+      latestId = Number(typedLatestIdCV.value.value);
     } else {
-      console.error("get-total-req returned unexpected type:", latestIdCV.type);
-      latestId = 0;
+      console.error("get-total-req returned unexpected type:", latestIdCV);
     }
 
     if (isNaN(latestId)) {
@@ -56,29 +56,16 @@ export async function getAllReqs() {
       latestId = 0;
     }
 
-    console.log(`Total requests from get-total-req: ${latestId}`);
+    console.log(`Total requests from get-total-req formatted: ${latestId}`);
 
-    const reqs: Req[] = [];
-
-    for (let i = 0; i < latestId; i++) {
-      const req = await getReq(i);
-      if (req) {
-        console.log(`Request ID ${i}:`, req);
-        reqs.push(req);
-      } else {
-        console.log(`Request ID ${i} returned null`);
-      }
-    }
-
-    console.log("Final requests array:", reqs);
-    return reqs;
+    return latestId;
   } catch (error) {
-    console.error("Error in getAllReqs:", error);
-    return [];
+    console.error("Error in getTotalReqs:", error);
+    return 0;
   }
 }
 
-export async function getReq(id: number) {
+export async function getReq(id: number): Promise<Req | null> {
   try {
     const reqDetails = await fetchCallReadOnlyFunction({
       contractAddress: CONTRACT_ADDRESS,
@@ -89,41 +76,39 @@ export async function getReq(id: number) {
       network: STACKS_TESTNET,
     });
 
-    const responseCV = reqDetails as any; // Temporarily use 'any' due to 'ok' wrapper
+    const responseCV = reqDetails as any;
     console.log(`ResponseCV for ID ${id}:`, responseCV);
 
-    // Unwrap the 'ok' response
-    if (responseCV.type !== "ok") {
-      console.log(`Request ID ${id} has unexpected type: ${responseCV.type}`);
+    if (!responseCV || responseCV.type !== "ok" || !responseCV.value) {
+      console.error(`getReq for ID ${id} failed: Response is not "ok" or value is missing.`);
       return null;
     }
 
-    const innerCV = responseCV.value as OptionalCV<TupleCV<ReqCV>>;
-    if (innerCV.type === "none") {
-      console.log(`Request ID ${id} is none (no data)`);
+    if (responseCV.value.type !== "some" || !responseCV.value.value) {
+      console.warn(`Request ID ${id} is none (no data).`);
       return null;
     }
 
-    if (innerCV.type !== "some" || innerCV.value.type !== "tuple") {
-      console.log(
-        `Request ID ${id} has unexpected inner type: ${innerCV.value?.type}`
-      );
+    if (responseCV.value.value.type !== "tuple") {
+      console.error(`getReq for ID ${id} failed: Inner value's value is not "tuple" but "${responseCV.value.value.type}".`);
       return null;
     }
 
-    const resCV = innerCV.value;
+    const resCV = responseCV.value.value as TupleCV<ReqCV>;
+    const resData = resCV.value as any; 
+
+    if (!resData.requester || !resData.request || !resData.response || !resData.prize) {
+        console.error(`Request ID ${id} is missing expected properties.`);
+        return null;
+    }
 
     const req: Req = {
       id: id,
-      //@ts-ignore
-      requester: resCV.requester.value,
-      //@ts-ignore
-      request: resCV.request.value,
-      //@ts-ignore
+      requester: resData.requester.value,
+      request: resData.request.value,
       response:
-        resCV.response.type === "some" ? resCV.response.value.value : null,
-      //@ts-ignore
-      prize: parseInt(resCV.prize.value.toString()),
+        resData.response.type === "some" ? resData.response.value.value : null,
+      prize: parseInt(resData.prize.value.toString()),
     };
 
     return req;
