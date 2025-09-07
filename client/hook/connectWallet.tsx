@@ -1,62 +1,66 @@
-import { getStxBalance } from "@/lib/stx-utils";
+"use client";
+
 import {
-  AppConfig,
-  showConnect,
-  UserSession,
-  type UserData,
+  connect,
+  disconnect,
+  getLocalStorage,
+  isConnected,
 } from "@stacks/connect";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { getUserAddress } from "@/lib/priv-key";
 
-const appDetails = {
-  name: "Boo",
-  icon: "../public/logo-orng.svg",
-};
-
-const appConfig = new AppConfig(["store_write"]);
-const userSession = new UserSession({ appConfig });
-
-export function useStacks() {
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [stxBalance, setStxBalance] = useState(0);
-
-  function connectWallet() {
-    showConnect({
-      appDetails,
-      onFinish: () => {
-        window.location.reload();
-      },
-      userSession,
-    });
+export async function connectWallet() {
+  if (isConnected()) {
+    console.log("Already authenticated");
+    disconnect();
+    return;
   }
+  const response = await connect();
+  console.log("connected: ", response.addresses);
+  const address = await getUserAddress();
+  return address;
+}
 
-  function disconnectWallet() {
-    userSession.signUserOut();
-    setUserData(null);
+export async function disconnectWallet() {
+  if (!isConnected()) {
+    console.log("Not Connected");
+    return;
   }
+  disconnect();
+  console.log("User Disconnected");
+}
 
-  useEffect(() => {
-    if (userSession.isSignInPending()) {
-      userSession.handlePendingSignIn().then((userData) => {
-        setUserData(userData);
-      });
-    } else if (userSession.isUserSignedIn()) {
-      setUserData(userSession.loadUserData());
+export async function handleWallet() {
+  const [address, setAddress] = useState("");
+
+  const response = await connect();
+
+  const data = getLocalStorage();
+  const stxAddresses = data?.addresses.stx;
+
+  if (stxAddresses && stxAddresses.length > 0) {
+    const address = stxAddresses[0].address;
+    console.log("STX Address:", address);
+
+    setAddress(address);
+  }
+}
+
+export default function WalletConnect() {
+  const [address, setAddress] = useState("");
+
+  const handleConnectWallet = async () => {
+    const addr = await connectWallet();
+    if (addr) {
+      setAddress(addr?.slice(0, 6) + "..." + addr?.slice(-4));
     }
-  }, []);
-
-  useEffect(() => {
-    if (userData) {
-      const address = userData.profile.stxAddress.testnet;
-      getStxBalance(address).then((balance) => {
-        setStxBalance(balance);
-      });
-    }
-  }, [userData]);
-
-  return {
-    userData,
-    stxBalance,
-    connectWallet,
-    disconnectWallet,
   };
+
+  return (
+    <div>
+      <button onClick={handleConnectWallet}>
+        {address ? address : "Connect Wallet"}
+      </button>
+    </div>
+  );
 }
