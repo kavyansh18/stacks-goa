@@ -46,10 +46,10 @@
     )
 )
 
-(define-public (unregister-solver)
+(define-public (unregister-solver (address principal))
     (match (map-get? addr-to-coll tx-sender)
         coll (begin
-            (try! (stx-transfer? coll (as-contract tx-sender) tx-sender))
+            (try! (as-contract (stx-transfer? coll tx-sender address)))
             (map-delete addr-to-coll tx-sender)
             (ok true)
         )
