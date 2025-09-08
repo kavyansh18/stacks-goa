@@ -10,7 +10,7 @@ export const useVerify = () => {
     setError(null);
     setData(null);
 
-    const endpoint = "https://9b7da07975a9.ngrok-free.app/verify";
+    const endpoint = "http://localhost:8080/verify";
 
     try {
       const response = await fetch(endpoint, {

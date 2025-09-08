@@ -7,6 +7,11 @@ import {
   isRegistered,
   addCollateral,
 } from "@/hook/booSolver";
+import {
+  setResponse,
+  finalizeResponse,
+  penalizeSolver, 
+} from "@/hook/booCore";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,7 +27,7 @@ const rowVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.1, 
+      delay: i * 0.1,
     },
   }),
 };
@@ -108,9 +113,8 @@ const App: React.FC = () => {
         setIsSolverRegistered(null);
       }
     };
-    
-    checkStatus();
 
+    checkStatus();
   }, [solverAddress]);
 
   const handleRegister = async () => {
@@ -209,9 +213,16 @@ const App: React.FC = () => {
     if (selectedReq) {
       const question = selectedReq.request;
       const answer = answerInput;
+      const taskId = selectedReq.id;
+      const solversAddress = solverAddress;
+      const amount = selectedReq.prize;
+
       setApiResponse(null);
+      console.log("Submitting answer to API for verification...");
       const data = await verifyAnswer(question, answer);
       setApiResponse(data);
+      console.log("API verification response:", data);
+
       if (data) {
         setReqs((prevReqs) =>
           prevReqs.map((req) =>
@@ -231,6 +242,26 @@ const App: React.FC = () => {
             progress: undefined,
           }
         );
+
+        console.log("Calling setResponse with ID and answer...");
+        await setResponse(taskId, answer);
+        console.log("setResponse function call complete.");
+
+        if (data.verified) {
+          console.log("Verification is true. Calling finalizeResponse...");
+          await finalizeResponse(taskId, solversAddress);
+          toast.success("Response finalized successfully!", {
+            position: "top-right",
+          });
+          console.log("finalizeResponse function call complete.");
+        } else {
+          console.log("Verification is false. Calling penalizeSolver...");
+          await penalizeSolver(solversAddress, amount);
+          toast.error("Solver penalized for incorrect answer.", {
+            position: "top-right",
+          });
+          console.log("penalizeSolver function call complete.");
+        }
       } else {
         toast.error("Failed to verify answer.", {
           position: "top-right",
@@ -338,8 +369,8 @@ const App: React.FC = () => {
         {/* Oracle Request Board Header */}
         <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
           <h2 className="text-xl font-bold">ORACLE REQUEST BOARD</h2>
-          <span className="text-sm">// 5 requests</span>
-          <span className="text-sm">Last updated: 8:55:32 PM</span>
+          {/* <span className="text-sm">// 5 requests</span>
+          <span className="text-sm">Last updated: 8:55:32 PM</span> */}
           <button className="border border-orange-600 rounded-full px-3 py-1 text-sm">
             <span className="mr-1">🔁</span> REFRESH
           </button>
