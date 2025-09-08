@@ -10,7 +10,7 @@ import {
 import {
   setResponse,
   finalizeResponse,
-  penalizeSolver, 
+  penalizeSolver,
 } from "@/hook/booCore";
 import { motion } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
@@ -18,6 +18,7 @@ import "react-toastify/dist/ReactToastify.css";
 import WalletConnect from "@/hook/connectWallet";
 import { useVerify } from "@/hook/useVerify";
 import { isConnected } from "@stacks/connect";
+import { ThreeCircles } from 'react-loader-spinner';
 
 type Req = ReqBase & { verified?: boolean };
 
@@ -28,8 +29,36 @@ const rowVariants = {
     y: 0,
     transition: {
       delay: i * 0.1,
+      ease: "easeOut" as const,
     },
   }),
+};
+
+const buttonHoverVariants = {
+  hover: {
+    scale: 1.05,
+    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
+    transition: {
+      duration: 0.2,
+      yoyo: Infinity,
+    },
+  },
+  tap: {
+    scale: 0.95,
+  },
+};
+
+const pulseVariants = {
+  pulse: {
+    scale: [1, 1.05, 1],
+    boxShadow: ["0px 0px 0px rgba(254, 91, 0, 0)", "0px 0px 10px rgba(254, 91, 0, 0.7)", "0px 0px 0px rgba(254, 91, 0, 0)"],
+    transition: {
+      duration: 1.5,
+      ease: "easeInOut",
+      repeat: Infinity,
+      repeatType: "loop",
+    },
+  },
 };
 
 const App: React.FC = () => {
@@ -77,7 +106,7 @@ const App: React.FC = () => {
         const results = await Promise.all(fetchPromises);
         const fetchedReqs = results.filter(
           (req): req is Req => req !== null
-        );
+        ).sort((a, b) => b.id - a.id); // Sort in reverse order
 
         setReqs(fetchedReqs);
         console.log(
@@ -243,19 +272,17 @@ const App: React.FC = () => {
           }
         );
 
-        console.log("Calling setResponse with ID and answer...");
-        await setResponse(taskId, answer);
-        console.log("setResponse function call complete.");
-
         if (data.verified) {
-          console.log("Verification is true. Calling finalizeResponse...");
+          console.log("Verification is true. Calling setResponse...");
+          await setResponse(taskId, answer);
+          console.log("setResponse function call complete. Now calling finalizeResponse...");
           await finalizeResponse(taskId, solversAddress);
           toast.success("Response finalized successfully!", {
             position: "top-right",
           });
           console.log("finalizeResponse function call complete.");
         } else {
-          console.log("Verification is false. Calling penalizeSolver...");
+          console.log("Verification is false. Calling penalizeSolver directly...");
           await penalizeSolver(solversAddress, amount);
           toast.error("Solver penalized for incorrect answer.", {
             position: "top-right",
@@ -278,55 +305,72 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-orange-900 text-gray-100">
-        <p className="text-xl">Loading data...</p>
+      <div className="flex items-center justify-center min-h-screen bg-black text-gray-100">
+        <ThreeCircles
+          visible={true}
+          height="100"
+          width="100"
+          color="#FE5B00"
+          ariaLabel="three-circles-loading"
+          wrapperStyle={{}}
+          wrapperClass=""
+        />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-orange-900 text-red-400">
+      <div className="flex items-center justify-center min-h-screen bg-black text-red-400">
         <p className="text-xl">Error: {error}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white text-orange-600 min-h-screen font-mono p-4">
+    <div className="bg-white text-orange-600 min-h-screen font-mono p-1">
       <ToastContainer />
       {/* Header Section */}
       <header className="flex justify-between items-center py-4 px-8 border-2 border-orange-600 rounded-lg max-w-7xl mx-auto mt-4">
         <div className="text-2xl font-bold flex-grow text-center">
-          <span className="text-orange-600">OPTIMISTIC ORACLE v2.1</span>
+          <span className="text-orange-600">BITCOIN OPTIMISTIC ORACLE (BOO)</span>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex flex-col items-end">
             {isSolverRegistered === false ? (
-              <button
+              <motion.button
                 onClick={() => setShowRegisterModal(true)}
                 className="flex items-center border border-orange-600 rounded-full px-4 py-2"
                 disabled={!isWalletConnected}
+                variants={buttonHoverVariants}
+                whileHover="hover"
+                whileTap="tap"
               >
                 <span className="mr-2">💡</span> Register
-              </button>
+              </motion.button>
             ) : isSolverRegistered === true ? (
               <>
                 <div className="flex items-center space-x-2">
-                  <button
+                  <motion.button
                     onClick={() => setShowAddCollateralModal(true)}
                     className="flex items-center border border-orange-600 rounded-full px-4 py-2"
                     disabled={!isWalletConnected}
+                    variants={buttonHoverVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
                     <span className="mr-2">💰</span> Add Collateral
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={handleUnregister}
                     className="flex items-center border border-red-600 text-red-600 rounded-full px-4 py-2"
                     disabled={isUnregistering || !isWalletConnected}
+                    variants={buttonHoverVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
                     <span className="mr-2">❌</span> Unregister
-                  </button>
+                  </motion.button>
                 </div>
               </>
             ) : (
@@ -348,21 +392,41 @@ const App: React.FC = () => {
         {/* Filter and Navigation */}
         <div className="flex items-center justify-between space-x-2 mb-4">
           <div className="flex space-x-2">
-            <button className="bg-orange-600 text-white rounded-md px-4 py-1">
+            <motion.button
+              className="bg-orange-600 text-white rounded-md px-4 py-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
               ALL REQUESTS
-            </button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+            </motion.button>
+            <motion.button
+              className="border border-orange-600 text-orange-600 rounded-md px-4 py-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
               TOKEN PRICES
-            </button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+            </motion.button>
+            <motion.button
+              className="border border-orange-600 text-orange-600 rounded-md px-4 py-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
               SPORTS SCORES
-            </button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+            </motion.button>
+            <motion.button
+              className="border border-orange-600 text-orange-600 rounded-md px-4 py-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
               UNRESOLVED
-            </button>
-            <button className="border border-orange-600 text-orange-600 rounded-md px-4 py-1">
+            </motion.button>
+            <motion.button
+              className="border border-orange-600 text-orange-600 rounded-md px-4 py-1"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
               RESOLVED
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -371,9 +435,14 @@ const App: React.FC = () => {
           <h2 className="text-xl font-bold">ORACLE REQUEST BOARD</h2>
           {/* <span className="text-sm">// 5 requests</span>
           <span className="text-sm">Last updated: 8:55:32 PM</span> */}
-          <button className="border border-orange-600 rounded-full px-3 py-1 text-sm">
+          <motion.button
+            className="border border-orange-600 rounded-full px-3 py-1 text-sm"
+            variants={buttonHoverVariants}
+            whileHover="hover"
+            whileTap="tap"
+          >
             <span className="mr-1">🔁</span> REFRESH
-          </button>
+          </motion.button>
         </div>
 
         {/* Filters Section */}
@@ -403,63 +472,74 @@ const App: React.FC = () => {
             No requests found in the contract.
           </p>
         ) : (
-          reqs.map((req, index) => (
-            <motion.div
-              key={req.id.toString()}
-              className="grid grid-cols-[50px_1fr_2fr_1fr_120px_120px] gap-4 py-2 border-b border-orange-300 items-center text-sm"
-              variants={rowVariants}
-              initial="hidden"
-              animate="visible"
-              custom={index}
-            >
-              <div className="text-black overflow-hidden truncate">
-                {req.id.toString()}
-              </div>
-              <div className="text-black overflow-hidden">{req.requester}</div>
-              <div className="text-black overflow-hidden truncate ml-8">
-                {req.request}
-              </div>
-              <div className="text-black overflow-hidden truncate">
-                {req.prize / 1000000} STX
-              </div>
-              <div className="text-black overflow-hidden ">
-                {req.verified === undefined
-                  ? "Pending"
-                  : req.verified
-                  ? "✅ Verified"
-                  : "❌ Failed"}
-              </div>
-              <div className="text-orange-600 justify-self-end">
-                <button
-                  onClick={() => setSelectedReq(req)}
-                  className="px-2 py-1 text-xs border border-orange-600 rounded-full hover:bg-orange-600 hover:text-white transition-colors duration-200"
-                >
-                  SUBMIT
-                </button>
-              </div>
-            </motion.div>
-          ))
+          reqs.map((req, index) => {
+            const isCompleted = req.response && req.response.length > 0;
+            const statusText = isCompleted ? "Completed" : "Pending";
+            return (
+              <motion.div
+                key={req.id.toString()}
+                className="grid grid-cols-[50px_1fr_2fr_1fr_120px_120px] gap-4 py-2 border-b border-orange-300 items-center text-sm"
+                variants={rowVariants}
+                initial="hidden"
+                animate="visible"
+                custom={index}
+              >
+                <div className="text-black overflow-hidden truncate">
+                  {req.id.toString()}
+                </div>
+                <div className="text-black overflow-hidden">{req.requester}</div>
+                <div className="text-black overflow-hidden truncate ml-8">
+                  {req.request}
+                </div>
+                <div className="text-black overflow-hidden truncate">
+                  {req.prize / 1000000} STX
+                </div>
+                <div className="text-black overflow-hidden ">
+                  {statusText}
+                </div>
+                <div className="text-orange-600 justify-self-end">
+                  <motion.button
+                    onClick={() => setSelectedReq(req)}
+                    className={`px-2 py-1 text-xs border border-orange-600 rounded-full transition-colors duration-200 ${isCompleted ? 'bg-gray-400 text-white cursor-not-allowed' : 'hover:bg-orange-600 hover:text-white'}`}
+                    whileHover={{ scale: isCompleted ? 1 : 1.1 }}
+                    whileTap={{ scale: isCompleted ? 1 : 0.9 }}
+                    disabled={!!isCompleted}
+                  >
+                    SUBMIT
+                  </motion.button>
+                </div>
+              </motion.div>
+            );
+          })
         )}
       </div>
 
       {/* Pop-up Modal */}
       {selectedReq && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4"
+          >
             <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
               <h3 className="text-lg font-bold">
                 Submit Answer for Request ID: {selectedReq.id.toString()}
               </h3>
-              <button
+              <motion.button
                 onClick={() => {
                   setSelectedReq(null);
                   setAnswerInput("");
                   setApiResponse(null);
                 }}
                 className="text-orange-600 text-xl font-bold"
+                whileHover={{ rotate: 90 }}
+                whileTap={{ scale: 0.8 }}
               >
                 &times;
-              </button>
+              </motion.button>
             </div>
             <div className="mb-4">
               <p className="font-bold text-black">Description:</p>
@@ -500,31 +580,41 @@ const App: React.FC = () => {
                 )
               )}
               <div className="flex justify-end">
-                <button
+                <motion.button
                   type="submit"
                   disabled={verifyLoading}
                   className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   SUBMIT ANSWER
-                </button>
+                </motion.button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* Register Modal */}
       {showRegisterModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4"
+          >
             <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
               <h3 className="text-lg font-bold">Register as a Solver</h3>
-              <button
+              <motion.button
                 onClick={() => setShowRegisterModal(false)}
                 className="text-orange-600 text-xl font-bold"
+                whileHover={{ rotate: 90 }}
+                whileTap={{ scale: 0.8 }}
               >
                 &times;
-              </button>
+              </motion.button>
             </div>
             <div className="mb-4">
               <p className="text-black mb-2">
@@ -544,30 +634,40 @@ const App: React.FC = () => {
               </p>
             </div>
             <div className="flex justify-end">
-              <button
+              <motion.button
                 onClick={handleRegister}
                 disabled={isRegistering}
                 className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {isRegistering ? "Staking..." : "Stake Collateral"}
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* Add Collateral Modal */}
       {showAddCollateralModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="bg-orange-100 border-2 border-orange-600 p-6 rounded-lg shadow-lg w-full max-w-md mx-4"
+          >
             <div className="flex justify-between items-center border-b border-orange-600 pb-2 mb-4">
               <h3 className="text-lg font-bold">Add Collateral</h3>
-              <button
+              <motion.button
                 onClick={() => setShowAddCollateralModal(false)}
                 className="text-orange-600 text-xl font-bold"
+                whileHover={{ rotate: 90 }}
+                whileTap={{ scale: 0.8 }}
               >
                 &times;
-              </button>
+              </motion.button>
             </div>
             <div className="mb-4">
               <p className="text-black mb-2">
@@ -586,15 +686,17 @@ const App: React.FC = () => {
               </p>
             </div>
             <div className="flex justify-end">
-              <button
+              <motion.button
                 onClick={handleAddCollateral}
                 disabled={isAddingCollateral}
                 className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {isAddingCollateral ? "Adding..." : "Add Collateral"}
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>
