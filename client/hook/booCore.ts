@@ -23,7 +23,7 @@ export async function requestData(req: string, prizeAmount: number) {
   }
 }
 
-export async function setResponse(id: number, responseStr: string) {
+export async function setResponse(id: number, responseStr: string) { //initailize response
   const functionArgs = [Cl.uint(id), Cl.stringAscii(responseStr)];
   try {
     const response = await request("stx_callContract", {
@@ -40,7 +40,7 @@ export async function setResponse(id: number, responseStr: string) {
   }
 }
 
-export async function finalizeResponse(id: number, solver: string) {
+export async function finalizeResponse(id: number, solver: string) { //if verified
   const functionArgs = [Cl.uint(id), Cl.principal(solver)];
   try {
     const response = await request("stx_callContract", {
@@ -57,7 +57,7 @@ export async function finalizeResponse(id: number, solver: string) {
   }
 }
 
-export async function penalizeSolver(solver: string, amount: number) {
+export async function penalizeSolver(solver: string, amount: number) { //if not verified
   const functionArgs = [Cl.principal(solver), Cl.uint(amount)];
   try {
     const response = await request("stx_callContract", {

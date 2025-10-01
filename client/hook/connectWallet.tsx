@@ -58,7 +58,7 @@ export default function WalletConnect() {
 
   return (
     <div>
-      <button onClick={handleConnectWallet}>
+      <button onClick={handleConnectWallet} className="cursor-pointer">
         {address ? address : "Connect Wallet"}
       </button>
     </div>
